@@ -1,0 +1,127 @@
+{
+  "downtown": {
+    "lon": -122.39681,
+    "lat": 37.78962,
+    "name": "Salesforce Transit Center (downtown core)"
+  },
+  "cutoffs_min": [
+    30,
+    45,
+    60
+  ],
+  "default_cutoff_min": 45,
+  "sf_housing_units": 407000,
+  "sf_average_rent": 3200,
+  "sf_renter_households": 230000,
+  "rent_elasticity": {
+    "conservative": -0.25,
+    "central": -0.5,
+    "optimistic": -1.0
+  },
+  "buildout_phase_years": 15,
+  "typology_density_du_per_acre": {
+    "low": 75,
+    "mid": 135,
+    "high": 250
+  },
+  "elasticity_sources": [
+    "Pew Charitable Trusts (2025): +10% metro housing stock \u21d2 rents grew ~5% less over 2017\u20132024 across 1,654 Zillow ZIPs \u21d2 stock elasticity \u2248 -0.5; regional supply ~4x more effective than purely local supply.",
+    "Mense (2025, J. Pol. Econ. Macro): 1% increase in new (flow) supply lowers rents ~0.19% via moving chains; short-run demand elasticity \u2248 -0.025.",
+    "Pennington (2021, UC Berkeley): in SF, new construction cuts rents ~2% within 100m and lowers displacement risk ~17% (fire-instrument, causal).",
+    "Asquith, Mast & Reed (2023, Rev. Econ. Stat.): large new buildings in low-income areas cut nearby rents 5\u20137% vs. counterfactual.",
+    "Austin natural experiment (2022\u201324): ~+13% multifamily stock over ~2 yrs coincided with ~-15% asking rents \u2014 a real-world upper-bound cross-check."
+  ],
+  "caveats": [
+    "Elasticities are estimated for marginal supply changes; a ~25% stock increase is far larger than any single study's variation, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude upper bound, not a point forecast. The per-10k-units and phased figures are the defensible headline.",
+    "Estimates are partial-equilibrium for the rental market and hold incomes/amenities fixed; new supply can modestly raise local demand (amenity/induced-demand effect documented by Pennington 2021), which the elasticity band already partly reflects.",
+    "Benefits are largest for older, mid- and lower-cost units via filtering and moving chains (Mense 2025; Pew 2025); the citywide average understates relief at the bottom of the market.",
+    "Unit yields are conservative (context-matched typologies, 70% buildable lot fraction); actual capacity could be higher with deeper upzoning."
+  ],
+  "method_note": "Rent change = (net-new units / current stock) x 100 x elasticity. Elasticity is the metro stock elasticity of rent; central -0.5 from Pew (2025), band -0.25..-1.0 spanning the causal literature.",
+  "summary": {
+    "cutoff_min": 45,
+    "downtown_anchor": "Salesforce Transit Center (downtown core)",
+    "num_candidates": 7548,
+    "total_net_new_units": 99579,
+    "total_acres": 1809.1,
+    "by_use_type": {
+      "single_story_commercial": 3611,
+      "vacant": 2510,
+      "low_intensity": 1118,
+      "surface_parking": 309
+    },
+    "by_typology": {
+      "high": 292,
+      "low": 90935,
+      "mid": 8352
+    },
+    "units_by_use_type": {
+      "low_intensity": 13181,
+      "single_story_commercial": 51090,
+      "surface_parking": 2930,
+      "vacant": 32378
+    }
+  },
+  "impact_default": {
+    "headline": "Building ~99,579 net-new homes (a 24.5% increase in SF's housing stock) is projected to lower average market rents by 6\u201324% (central estimate 12%), \u2248 $391/month off the typical rent.",
+    "inputs": {
+      "net_new_units": 99579,
+      "transit_cutoff_min": 45,
+      "sf_housing_units": 407000,
+      "sf_average_rent": 3200,
+      "sf_renter_households": 230000
+    },
+    "stock_increase_pct": 24.47,
+    "marginal_rent_pct_per_10k_units": {
+      "conservative": -0.614,
+      "central": -1.229,
+      "optimistic": -2.457
+    },
+    "scenarios_full_buildout": {
+      "conservative": {
+        "elasticity": -0.25,
+        "rent_change_pct": -6.12,
+        "new_average_rent": 3004.27,
+        "monthly_savings_per_renter": 195.73,
+        "annual_savings_per_renter": 2348.79,
+        "citywide_annual_savings": 540222192.0
+      },
+      "central": {
+        "elasticity": -0.5,
+        "rent_change_pct": -12.23,
+        "new_average_rent": 2808.53,
+        "monthly_savings_per_renter": 391.47,
+        "annual_savings_per_renter": 4697.58,
+        "citywide_annual_savings": 1080444383.0
+      },
+      "optimistic": {
+        "elasticity": -1.0,
+        "rent_change_pct": -24.47,
+        "new_average_rent": 2417.07,
+        "monthly_savings_per_renter": 782.93,
+        "annual_savings_per_renter": 9395.17,
+        "citywide_annual_savings": 2160888767.0
+      }
+    },
+    "phased_buildout": {
+      "years": 15,
+      "units_per_year": 6639,
+      "annual_stock_pct": 1.631,
+      "annual_rent_change_pct_central": -0.816
+    },
+    "cross_checks": [
+      "Pew Charitable Trusts (2025): +10% metro housing stock \u21d2 rents grew ~5% less over 2017\u20132024 across 1,654 Zillow ZIPs \u21d2 stock elasticity \u2248 -0.5; regional supply ~4x more effective than purely local supply.",
+      "Mense (2025, J. Pol. Econ. Macro): 1% increase in new (flow) supply lowers rents ~0.19% via moving chains; short-run demand elasticity \u2248 -0.025.",
+      "Pennington (2021, UC Berkeley): in SF, new construction cuts rents ~2% within 100m and lowers displacement risk ~17% (fire-instrument, causal).",
+      "Asquith, Mast & Reed (2023, Rev. Econ. Stat.): large new buildings in low-income areas cut nearby rents 5\u20137% vs. counterfactual.",
+      "Austin natural experiment (2022\u201324): ~+13% multifamily stock over ~2 yrs coincided with ~-15% asking rents \u2014 a real-world upper-bound cross-check."
+    ],
+    "caveats": [
+      "Elasticities are estimated for marginal supply changes; a ~25% stock increase is far larger than any single study's variation, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude upper bound, not a point forecast. The per-10k-units and phased figures are the defensible headline.",
+      "Estimates are partial-equilibrium for the rental market and hold incomes/amenities fixed; new supply can modestly raise local demand (amenity/induced-demand effect documented by Pennington 2021), which the elasticity band already partly reflects.",
+      "Benefits are largest for older, mid- and lower-cost units via filtering and moving chains (Mense 2025; Pew 2025); the citywide average understates relief at the bottom of the market.",
+      "Unit yields are conservative (context-matched typologies, 70% buildable lot fraction); actual capacity could be higher with deeper upzoning."
+    ],
+    "method_note": "Rent change = (net-new units / current stock) x 100 x elasticity. Elasticity is the metro stock elasticity of rent; central -0.5 from Pew (2025), band -0.25..-1.0 spanning the causal literature."
+  }
+}

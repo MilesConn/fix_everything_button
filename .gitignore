@@ -1,0 +1,19 @@
+# Large, fully reproducible inputs — regenerate with: uv run scripts/pull_data.py
+data/raw/building_footprints.csv
+data/gtfs/
+data/osm/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Node / SvelteKit
+site/node_modules/
+site/build/
+site/.svelte-kit/
+site/.vite/
+
+# OS
+.DS_Store

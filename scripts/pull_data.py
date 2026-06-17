@@ -1,127 +1,121 @@
+"""Step 1 — Pull all raw inputs (reproducible).
+
+Pulls:
+  * DataSF (Socrata) tabular datasets  -> data/raw/*.csv
+  * GTFS transit feeds (Muni, BART)    -> data/gtfs/*.zip
+  * San Francisco OSM street network   -> data/osm/san_francisco.osm.pbf
+
+Everything is idempotent: existing files are kept unless --force is passed.
+
+Usage:
+    uv run scripts/pull_data.py            # pull anything missing
+    uv run scripts/pull_data.py --force    # re-pull everything
+"""
+
+from __future__ import annotations
+
+import argparse
 import os
-import requests
+import sys
 import time
-from pathlib import Path
+
+import requests
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(".env.secrets")
-API_KEY = os.getenv("SF_OPENDATA_API_KEY")
+sys.path.insert(0, os.path.dirname(__file__))
+import config as C  # noqa: E402
 
-SCRIPT_DIR = Path(__file__).parent.resolve()
-DATA_DIR = (SCRIPT_DIR / "../data/raw").resolve()
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+load_dotenv(C.ROOT / ".env")
+load_dotenv(C.ROOT / ".env.secrets")  # optional, per project INSTRUCTIONS
+APP_TOKEN = os.getenv("SF_OPENDATA_API_KEY") or None
 
-# Socrata resource IDs mapped to filenames
-# We use the resources you provided
-DATASETS = {
-    "parcels.csv": "acdm-wktn",
-    "land_use_current.csv": "c5ge-t6pj", # Base Land Use dataset (Public)
-    "zoning_districts.csv": "xzez-p3nc"
-}
+UA = "make-room-sf/1.0 (housing-capacity research; reproducible pipeline)"
+PAGE = 50_000
 
-def download_dataset(filename, resource_id):
-    filepath = DATA_DIR / filename
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    if API_KEY:
-        headers['X-App-Token'] = API_KEY
 
-    # Check remote count
-    print(f"Checking remote row count for {filename}...")
-    try:
-        count_url = f"https://data.sfgov.org/resource/{resource_id}.json?$select=count(*)"
-        attempt = 0
+def _headers() -> dict:
+    h = {"User-Agent": UA}
+    if APP_TOKEN:
+        h["X-App-Token"] = APP_TOKEN
+    return h
+
+
+def _get(url: str, *, stream: bool = False, max_time: int = 120, retries: int = 5):
+    last = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, headers=_headers(), stream=stream, timeout=max_time)
+            if r.status_code == 200:
+                return r
+            last = f"HTTP {r.status_code}"
+        except requests.RequestException as e:
+            last = str(e)
+        wait = min(2 ** attempt, 30)
+        print(f"    [attempt {attempt}] {last}; retrying in {wait}s")
+        time.sleep(wait)
+    raise RuntimeError(f"Failed to GET {url}: {last}")
+
+
+def download_socrata(filename: str, resource_id: str, desc: str, force: bool) -> None:
+    out = C.RAW / filename
+    if out.exists() and not force:
+        print(f"[skip] {filename} exists ({out.stat().st_size/1e6:.1f} MB) — {desc}")
+        return
+    print(f"[pull] {filename}  ({resource_id}) — {desc}")
+    offset, first = 0, True
+    with open(out, "wb") as f:
         while True:
-            count_resp = requests.get(count_url, headers=headers)
-            if count_resp.status_code == 200:
+            url = (
+                f"https://{C.SF_DOMAIN}/resource/{resource_id}.csv"
+                f"?$limit={PAGE}&$offset={offset}&$order=:id"
+            )
+            print(f"    offset {offset:,} …")
+            lines = _get(url).content.splitlines(keepends=True)
+            if not lines or (len(lines) <= 1 and not first):
                 break
-            attempt += 1
-            print(f"  [Count Attempt {attempt}] Received {count_resp.status_code}. Retrying in 2s...")
-            time.sleep(2)
-        count_resp.raise_for_status()
-        remote_count = int(count_resp.json()[0]['count'])
-    except Exception as e:
-        print(f"Could not get remote count: {e}. Will force download.")
-        remote_count = -1
-
-    if filepath.exists():
-        print(f"Checking local row count for {filename}...")
-        # Count local lines
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            local_lines = sum(1 for _ in f)
-        local_count = local_lines - 1 if local_lines > 0 else 0
-        
-        if remote_count != -1 and local_count >= remote_count:
-            print(f"File {filename} already exists and has all {local_count} rows (API reports {remote_count}). Skipping download.")
-            return
-        else:
-            print(f"File {filename} exists but has {local_count} rows (API reports {remote_count}). Redownloading...")
-    else:
-        print(f"File {filename} not found locally. Preparing to download {remote_count} rows...")
-
-    print(f"Downloading {filename} from DataSF with pagination...")
-    start_time = time.time()
-
-    limit = 50000
-    offset = 0
-    first_chunk = True
-
-    with open(filepath, 'wb') as f:
-        while True:
-            # We use the /resource/ endpoint which supports SoQL limits and offsets natively
-            url = f"https://data.sfgov.org/resource/{resource_id}.csv?$limit={limit}&$offset={offset}"
-            print(f"  Fetching offset {offset}...")
-            
-            attempt = 0
-            while True:
-                response = requests.get(url, headers=headers)
-                if response.status_code == 200:
-                    break
-                attempt += 1
-                print(f"  [Chunk Attempt {attempt}] Received {response.status_code}. Retrying in 2s...")
-                time.sleep(2)
-            response.raise_for_status()
-            
-            # The response is text (CSV format)
-            # Split into lines to easily strip the header from chunks 2+
-            lines = response.content.splitlines(keepends=True)
-            
-            if len(lines) <= 1:
-                # Only header or completely empty
-                if first_chunk:
-                    f.writelines(lines)
+            f.writelines(lines if first else lines[1:])
+            first = False
+            if len(lines) - 1 < PAGE:
                 break
-                
-            if first_chunk:
-                f.writelines(lines)
-                first_chunk = False
-            else:
-                # Skip the header line for subsequent chunks
-                f.writelines(lines[1:])
-            
-            # If we received fewer rows than the limit (plus 1 for header), we are at the end
-            if len(lines) - 1 < limit:
-                break
-                
-            offset += limit
-            
-            # Be respectful to the API
-            time.sleep(1.0)
-            
-    elapsed = time.time() - start_time
-    print(f"Finished downloading {filename} in {elapsed:.2f} seconds.")
+            offset += PAGE
+            time.sleep(0.5)
+    print(f"    -> {out} ({out.stat().st_size/1e6:.1f} MB)")
 
-def main():
-    print("Starting SF OpenData Pull...")
-    for filename, resource_id in [list(DATASETS.items())[0]]:
-        download_dataset(filename, resource_id)
-    print("Data pull complete.")
+
+def download_file(url: str, out, force: bool, label: str) -> None:
+    if out.exists() and not force:
+        print(f"[skip] {out.name} exists ({out.stat().st_size/1e6:.1f} MB) — {label}")
+        return
+    print(f"[pull] {out.name} — {label}\n    {url}")
+    r = _get(url, stream=True, max_time=180)
+    tmp = out.with_suffix(out.suffix + ".part")
+    with open(tmp, "wb") as f:
+        for chunk in r.iter_content(chunk_size=1 << 20):
+            f.write(chunk)
+    tmp.replace(out)
+    print(f"    -> {out} ({out.stat().st_size/1e6:.1f} MB)")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--force", action="store_true", help="re-pull everything")
+    ap.add_argument("--skip-osm", action="store_true", help="skip the large OSM extract")
+    args = ap.parse_args()
+
+    print("== DataSF tabular datasets ==")
+    for fname, (rid, desc) in C.SOCRATA_DATASETS.items():
+        download_socrata(fname, rid, desc, args.force)
+
+    print("\n== GTFS transit feeds ==")
+    for fname, url in C.GTFS_FEEDS.items():
+        download_file(url, C.GTFS / fname, args.force, "transit schedule")
+
+    if not args.skip_osm:
+        print("\n== OSM street network ==")
+        download_file(C.OSM_URL, C.OSM_FILE, args.force, "San Francisco street network")
+
+    print("\nData pull complete.")
+
 
 if __name__ == "__main__":
-    # Ensure script runs from its directory or parent correctly
-    script_dir = Path(__file__).parent
-    os.chdir(script_dir)
     main()
