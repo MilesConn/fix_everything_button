@@ -10,7 +10,8 @@ Method (see docs/METHODOLOGY.md §5):
   * Report the MARGINAL effect (per 10k units) as the headline, because that is
     inside the range the literature validates.
   * Report the full-buildout effect too, but explicitly flag it as a linear
-    extrapolation of a ~25% stock shock that no study directly validates.
+    extrapolation of a one-time stock shock larger than the variation the
+    elasticities were directly measured on.
   * Convert to $/month per renter and an aggregate citywide annual figure.
   * Carry cross-checks (Austin, Pennington) and caveats in the output so the
     numbers are never presented without their context.
@@ -95,11 +96,12 @@ def main() -> None:
         "phased_buildout": phased,
         "cross_checks": C.ELASTICITY_SOURCES,
         "caveats": [
-            "Elasticities are estimated for marginal supply changes; a ~25% stock "
-            "increase is far larger than any single study's variation, so the "
-            "full-buildout figures are a linear extrapolation and should be read "
-            "as an order-of-magnitude upper bound, not a point forecast. The "
-            "per-10k-units and phased figures are the defensible headline.",
+            f"Elasticities are estimated for marginal supply changes; this "
+            f"~{stock_pct:.0f}% one-time stock increase is still larger than the "
+            f"year-to-year variation the elasticities were measured on, so the "
+            f"full-buildout figures are a linear extrapolation and should be read "
+            f"as an order-of-magnitude estimate, not a point forecast. The "
+            f"per-10k-units and phased figures are the most defensible headline.",
             "Estimates are partial-equilibrium for the rental market and hold "
             "incomes/amenities fixed; new supply can modestly raise local demand "
             "(amenity/induced-demand effect documented by Pennington 2021), which "

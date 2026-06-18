@@ -145,7 +145,7 @@
 
       <p class="caveat">
         <strong>Read this honestly.</strong> A {fmtPct(impact.stockPct, 0)} jump in the housing
-        stock is far bigger than the year-to-year changes these elasticities were measured on,
+        stock is larger than the year-to-year changes these elasticities were measured on,
         so the full-buildout percentages above are a linear extrapolation — an order of
         magnitude, not a forecast. The defensible, conservative way to state it: phased over
         {model.buildout_phase_years} years, that's about <strong>{fmtInt(impact.perYear)} homes a

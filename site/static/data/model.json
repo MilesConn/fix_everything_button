@@ -32,7 +32,7 @@
     "Austin natural experiment (2022\u201324): ~+13% multifamily stock over ~2 yrs coincided with ~-15% asking rents \u2014 a real-world upper-bound cross-check."
   ],
   "caveats": [
-    "Elasticities are estimated for marginal supply changes; a ~25% stock increase is far larger than any single study's variation, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude upper bound, not a point forecast. The per-10k-units and phased figures are the defensible headline.",
+    "Elasticities are estimated for marginal supply changes; this ~4% one-time stock increase is still larger than the year-to-year variation the elasticities were measured on, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude estimate, not a point forecast. The per-10k-units and phased figures are the most defensible headline.",
     "Estimates are partial-equilibrium for the rental market and hold incomes/amenities fixed; new supply can modestly raise local demand (amenity/induced-demand effect documented by Pennington 2021), which the elasticity band already partly reflects.",
     "Benefits are largest for older, mid- and lower-cost units via filtering and moving chains (Mense 2025; Pew 2025); the citywide average understates relief at the bottom of the market.",
     "Unit yields are conservative (context-matched typologies, 70% buildable lot fraction); actual capacity could be higher with deeper upzoning."
@@ -116,7 +116,7 @@
       "Austin natural experiment (2022\u201324): ~+13% multifamily stock over ~2 yrs coincided with ~-15% asking rents \u2014 a real-world upper-bound cross-check."
     ],
     "caveats": [
-      "Elasticities are estimated for marginal supply changes; a ~25% stock increase is far larger than any single study's variation, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude upper bound, not a point forecast. The per-10k-units and phased figures are the defensible headline.",
+      "Elasticities are estimated for marginal supply changes; this ~4% one-time stock increase is still larger than the year-to-year variation the elasticities were measured on, so the full-buildout figures are a linear extrapolation and should be read as an order-of-magnitude estimate, not a point forecast. The per-10k-units and phased figures are the most defensible headline.",
       "Estimates are partial-equilibrium for the rental market and hold incomes/amenities fixed; new supply can modestly raise local demand (amenity/induced-demand effect documented by Pennington 2021), which the elasticity band already partly reflects.",
       "Benefits are largest for older, mid- and lower-cost units via filtering and moving chains (Mense 2025; Pew 2025); the citywide average understates relief at the bottom of the market.",
       "Unit yields are conservative (context-matched typologies, 70% buildable lot fraction); actual capacity could be higher with deeper upzoning."
