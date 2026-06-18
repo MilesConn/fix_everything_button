@@ -1,75 +1,140 @@
+"""Step 4 — Economic model: how much would the new homes lower SF rents?
+
+Design goal: a defensible, transparent statement of the form
+"building N homes lowers SF rents by ~X% (± a stated range)."
+
+Method (see docs/METHODOLOGY.md §5):
+  * Anchor on a metro-level STOCK elasticity of rent — the % change in rent per
+    1% change in the housing stock — taken from the causal/quasi-experimental
+    literature, not invented. Central = -0.5 (Pew 2025), band -0.25 to -1.0.
+  * Report the MARGINAL effect (per 10k units) as the headline, because that is
+    inside the range the literature validates.
+  * Report the full-buildout effect too, but explicitly flag it as a linear
+    extrapolation of a one-time stock shock larger than the variation the
+    elasticities were directly measured on.
+  * Convert to $/month per renter and an aggregate citywide annual figure.
+  * Carry cross-checks (Austin, Pennington) and caveats in the output so the
+    numbers are never presented without their context.
+
+Output:
+    data/processed/economic_impact.json
+
+Usage:
+    uv run scripts/economic_model.py
+"""
+
+from __future__ import annotations
+
+import json
 import os
-import pandas as pd
-from pathlib import Path
+import sys
 
-PROCESSED_DIR = Path("../data/processed")
+sys.path.insert(0, os.path.dirname(__file__))
+import config as C  # noqa: E402
 
-# Economic Assumptions (based on research for Austin, Minneapolis, and general urban economics)
-# Elasticity: A 1% increase in housing stock leads to an ELASTICITY% change in rent.
-# Studies show varying numbers: Austin (~ -0.63%), Minneapolis (~ -1.1%). We use -0.8% as a baseline.
-RENT_ELASTICITY = -0.8 
 
-# Current SF Context
-SF_CURRENT_HOUSING_STOCK = 410000  # Approx SF housing units
-SF_CURRENT_AVERAGE_RENT = 3000     # Approx average rent in USD
-
-# Development Assumptions
-# If we upzone a candidate parcel, how many units on average can be built?
-# This could be a function of lot size. For now, let's assume an average of 10 units per candidate lot.
-UNITS_PER_LOT = 10
-
-def run_economic_model():
-    candidates_path = PROCESSED_DIR / "candidates.csv"
-    
-    df = pd.read_csv(candidates_path)
-    num_candidates = len(df)
-    print(f"Loaded {num_candidates} candidate parcels.")
-    
-    # Calculate total new units
-    total_new_units = num_candidates * UNITS_PER_LOT
-    
-    # Calculate percentage increase in housing stock
-    stock_increase_pct = (total_new_units / SF_CURRENT_HOUSING_STOCK) * 100
-    
-    # Calculate percentage drop in rent
-    rent_drop_pct = stock_increase_pct * abs(RENT_ELASTICITY)
-    
-    # Calculate new average rent
-    new_average_rent = SF_CURRENT_AVERAGE_RENT * (1 - (rent_drop_pct / 100))
-    monthly_savings = SF_CURRENT_AVERAGE_RENT - new_average_rent
-    
-    print("\n--- Economic Model Results ---")
-    print(f"Current SF Housing Stock: {SF_CURRENT_HOUSING_STOCK:,} units")
-    print(f"Current Average Rent: ${SF_CURRENT_AVERAGE_RENT:,.2f}/month")
-    print(f"\nCandidates for upzoning: {num_candidates:,} parcels")
-    print(f"Assumed new units per lot: {UNITS_PER_LOT}")
-    print(f"Total new units projected: {total_new_units:,} units")
-    
-    print(f"\nIncrease in Housing Stock: {stock_increase_pct:.2f}%")
-    print(f"Rent Elasticity (Rent drop per 1% supply increase): {abs(RENT_ELASTICITY):.2f}%")
-    
-    print(f"\nProjected Rent Drop: {rent_drop_pct:.2f}%")
-    print(f"Projected New Average Rent: ${new_average_rent:,.2f}/month")
-    print(f"Monthly Savings per renter: ${monthly_savings:,.2f}")
-    print("------------------------------\n")
-    
-    # Save output summary
-    results = {
-        "num_candidates": num_candidates,
-        "new_units_projected": total_new_units,
-        "stock_increase_pct": stock_increase_pct,
-        "projected_rent_drop_pct": rent_drop_pct,
-        "new_average_rent": new_average_rent,
-        "monthly_savings": monthly_savings
+def scenario(units: int, elasticity: float) -> dict:
+    stock_pct = units / C.SF_HOUSING_UNITS * 100.0
+    rent_pct = stock_pct * elasticity  # negative
+    new_rent = C.SF_AVERAGE_RENT * (1 + rent_pct / 100.0)
+    monthly_savings = C.SF_AVERAGE_RENT - new_rent
+    return {
+        "elasticity": elasticity,
+        "rent_change_pct": round(rent_pct, 2),
+        "new_average_rent": round(new_rent, 2),
+        "monthly_savings_per_renter": round(monthly_savings, 2),
+        "annual_savings_per_renter": round(monthly_savings * 12, 2),
+        "citywide_annual_savings": round(monthly_savings * 12 * C.SF_RENTER_HOUSEHOLDS, 0),
     }
-    
-    import json
-    with open(PROCESSED_DIR / "economic_impact.json", "w") as f:
-        json.dump(results, f, indent=4)
-        
-    print("Saved economic impact summary to data/processed/economic_impact.json")
+
+
+def main() -> None:
+    summary_path = C.PROCESSED / "candidates_summary.json"
+    if not summary_path.exists():
+        raise SystemExit("Run filter_candidates.py first (candidates_summary.json missing).")
+    summary = json.loads(summary_path.read_text())
+    units = int(summary["total_net_new_units"])
+
+    stock_pct = units / C.SF_HOUSING_UNITS * 100.0
+
+    scenarios = {name: scenario(units, e) for name, e in C.RENT_ELASTICITY.items()}
+    marginal = {
+        name: round((10_000 / C.SF_HOUSING_UNITS * 100.0) * e, 3)
+        for name, e in C.RENT_ELASTICITY.items()
+    }
+
+    units_per_year = round(units / C.BUILDOUT_PHASE_YEARS)
+    phased = {
+        "years": C.BUILDOUT_PHASE_YEARS,
+        "units_per_year": units_per_year,
+        "annual_stock_pct": round(units_per_year / C.SF_HOUSING_UNITS * 100.0, 3),
+        "annual_rent_change_pct_central": round(
+            (units_per_year / C.SF_HOUSING_UNITS * 100.0) * C.RENT_ELASTICITY["central"], 3
+        ),
+    }
+
+    result = {
+        "headline": (
+            f"Building ~{units:,} net-new homes (a {stock_pct:.1f}% increase in SF's "
+            f"housing stock) is projected to lower average market rents by "
+            f"{abs(scenarios['conservative']['rent_change_pct']):.0f}–"
+            f"{abs(scenarios['optimistic']['rent_change_pct']):.0f}% "
+            f"(central estimate {abs(scenarios['central']['rent_change_pct']):.0f}%), "
+            f"≈ ${abs(scenarios['central']['monthly_savings_per_renter']):,.0f}/month "
+            f"off the typical rent."
+        ),
+        "inputs": {
+            "net_new_units": units,
+            "transit_cutoff_min": summary["cutoff_min"],
+            "sf_housing_units": C.SF_HOUSING_UNITS,
+            "sf_average_rent": C.SF_AVERAGE_RENT,
+            "sf_renter_households": C.SF_RENTER_HOUSEHOLDS,
+        },
+        "stock_increase_pct": round(stock_pct, 2),
+        "marginal_rent_pct_per_10k_units": marginal,
+        "scenarios_full_buildout": scenarios,
+        "phased_buildout": phased,
+        "cross_checks": C.ELASTICITY_SOURCES,
+        "caveats": [
+            f"Elasticities are estimated for marginal supply changes; this "
+            f"~{stock_pct:.0f}% one-time stock increase is still larger than the "
+            f"year-to-year variation the elasticities were measured on, so the "
+            f"full-buildout figures are a linear extrapolation and should be read "
+            f"as an order-of-magnitude estimate, not a point forecast. The "
+            f"per-10k-units and phased figures are the most defensible headline.",
+            "Estimates are partial-equilibrium for the rental market and hold "
+            "incomes/amenities fixed; new supply can modestly raise local demand "
+            "(amenity/induced-demand effect documented by Pennington 2021), which "
+            "the elasticity band already partly reflects.",
+            "Benefits are largest for older, mid- and lower-cost units via filtering "
+            "and moving chains (Mense 2025; Pew 2025); the citywide average understates "
+            "relief at the bottom of the market.",
+            "Unit yields are conservative (context-matched typologies, 70% buildable "
+            "lot fraction); actual capacity could be higher with deeper upzoning.",
+        ],
+        "method_note": (
+            "Rent change = (net-new units / current stock) x 100 x elasticity. "
+            "Elasticity is the metro stock elasticity of rent; central -0.5 from "
+            "Pew (2025), band -0.25..-1.0 spanning the causal literature."
+        ),
+    }
+
+    out = C.PROCESSED / "economic_impact.json"
+    out.write_text(json.dumps(result, indent=2))
+
+    print("=== Economic impact ===")
+    print(result["headline"])
+    print(f"\nStock increase: {stock_pct:.1f}%")
+    print("Full-buildout rent change:")
+    for name, s in scenarios.items():
+        print(f"  {name:>12}: {s['rent_change_pct']:+.1f}%  "
+              f"(${-s['monthly_savings_per_renter']:,.0f}/mo, "
+              f"new avg ${s['new_average_rent']:,.0f})")
+    print(f"\nMarginal (per 10k units): {marginal}")
+    print(f"Phased ({phased['years']} yrs): {phased['units_per_year']:,} units/yr "
+          f"-> {phased['annual_rent_change_pct_central']:+.2f}%/yr (central)")
+    print(f"\nSaved {out}")
+
 
 if __name__ == "__main__":
-    script_dir = Path(__file__).parent
-    os.chdir(script_dir)
-    run_economic_model()
+    main()
