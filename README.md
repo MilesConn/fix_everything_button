@@ -20,12 +20,18 @@ See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the full write-up and citat
 
 | | |
 |---|---|
-| Candidate sites | **~7,500** |
-| Net-new homes (no demolition) | **~99,600** |
-| Underused land | **~1,800 acres** |
-| Increase in SF housing stock | **~24%** |
-| Projected rent change (full buildout) | **−6% to −24%** (central **−12%**) |
+| Candidate sites | **~2,200** |
+| Net-new homes (no demolition) | **~16,600** |
+| Underused land | **~300 acres** |
+| Increase in SF housing stock | **~4%** |
+| Projected rent change (full buildout) | **−1% to −4%** (central **−2%**) |
 | Defensible marginal effect | each **10,000** homes ⇒ **~−1.2%** rent (central) |
+
+> These figures reflect the **Assessor-roll refinement** (see below): the first
+> draft reported ~7,500 sites / ~99,600 homes, but ~39% of those parcels had
+> zero LiDAR height (post-2017 towers / mis-joins counted as “vacant”) and
+> institutional floor area was counted as commercial. The current numbers are
+> the precise count after removing those false positives.
 
 All numbers regenerate from raw public data and update live on the site as the
 transit cutoff changes.
@@ -38,9 +44,9 @@ Five reproducible steps (each script is standalone; `main.py` runs them in order
 
 | Step | Script | What it does |
 |------|--------|--------------|
-| 1 | `scripts/pull_data.py` | Pulls DataSF parcels, land use, zoning, building footprints (LiDAR heights), the 2100 sea-level-rise zone; Muni + BART GTFS; the SF OSM street network. Idempotent. |
+| 1 | `scripts/pull_data.py` | Pulls DataSF parcels, land use, zoning, building footprints (LiDAR heights), the **2024 Assessor secured roll**, the **SF land boundary**, the 2100 sea-level-rise zone; Muni + BART GTFS; the SF OSM street network. Idempotent. |
 | 2 | `scripts/compute_transit.py` | Builds a multimodal network (OSM + GTFS) with **r5py** and computes door-to-door public-transit travel time from downtown to a 200 m grid (typical weekday AM, averaged over an hour). This travel-time surface is the adjustable accessibility knob. |
-| 3 | `scripts/filter_candidates.py` | Applies the candidate criteria, excludes the SLR zone, joins transit times, and assigns each site a context-matched typology + conservative unit yield. |
+| 3 | `scripts/filter_candidates.py` | Overlays the current Assessor roll (stories/units/year/class) on each parcel, applies the candidate criteria, excludes the SLR zone, joins transit times, and assigns each site a context-matched typology + conservative unit yield. |
 | 4 | `scripts/economic_model.py` | Translates net-new units into a rent change using a metro **stock elasticity of rent** (central −0.5; band −0.25 to −1.0), with marginal, phased and full-buildout framings + caveats. |
 | 5 | `scripts/export_site_data.py` | Stages GeoJSON layers + a compact `model.json` into `site/static/data` for the website. |
 
@@ -49,11 +55,19 @@ live in [`scripts/config.py`](scripts/config.py).
 
 ### Candidate criteria (all must hold)
 
-1. **No home demolished** — zero existing residential units.
-2. **Underused** — surface parking (not a garage), vacant, or tallest building ≤ ~9 m (single-/low-story), from LiDAR.
-3. **Not a park** — protected open space excluded.
-4. **Outside the 2100 SLR + 100-yr-storm inundation zone.**
-5. **Transit-served** — public-transit travel time to downtown ≤ the chosen cutoff (default 45 min).
+1. **No home demolished** — zero existing residential units in both the land-use file and the current Assessor roll, and not a residential class.
+2. **Not civic / institutional / medical / government / public** — libraries, schools, churches, hospitals, fire/police, and all public land excluded by Assessor property class.
+3. **Not office / industrial / hotel / parking garage.**
+4. **Genuinely low-rise** — Assessor stories ≤ 1 **and** LiDAR ≤ ~9 m **and** floor-area ratio ≤ 1.2 (the FAR cap rejects dense / mis-mapped towers).
+5. **Not recently built** — Assessor year built < 2015.
+6. **A soft-site signal** — surface parking lot, vacant developable lot, or single-story commercial / retail.
+7. **Not a park** — protected open space excluded.
+8. **Outside the 2100 SLR + 100-yr-storm inundation zone.**
+9. **Transit-served** — public-transit travel time to downtown ≤ the chosen cutoff (default 45 min; adjustable 15–75 at 1-min steps).
+
+A companion **`/review` annotation tool** on the site shows each candidate with a
+satellite photo + Street View link and lets you mark it feasible / infeasible /
+unsure with a reason, exported to CSV to refine these rules.
 
 ---
 

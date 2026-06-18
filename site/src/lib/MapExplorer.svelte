@@ -16,14 +16,12 @@
   const USE_COLORS = {
     surface_parking: '#7b3294',
     vacant: '#1b7837',
-    single_story_commercial: '#2166ac',
-    low_intensity: '#d6604d'
+    single_story_commercial: '#2166ac'
   };
   const USE_LABELS = {
-    surface_parking: 'Surface parking',
+    surface_parking: 'Surface parking lot',
     vacant: 'Vacant lot',
-    single_story_commercial: 'Single-story commercial',
-    low_intensity: 'Low-intensity / underbuilt'
+    single_story_commercial: 'Single-story commercial'
   };
   const TYPO_COLORS = { low: '#fdae61', mid: '#f46d43', high: '#a50026' };
   const TYPO_LABELS = { low: 'Low-rise (3–4 st.)', mid: 'Mid-rise (5–8 st.)', high: 'High-rise (9+ st.)' };
@@ -64,8 +62,7 @@
     return ['match', ['get', 'use_type'],
       'surface_parking', USE_COLORS.surface_parking,
       'vacant', USE_COLORS.vacant,
-      'single_story_commercial', USE_COLORS.single_story_commercial,
-      'low_intensity', USE_COLORS.low_intensity, '#888'];
+      'single_story_commercial', USE_COLORS.single_story_commercial, '#888'];
   }
 
   $effect(() => {
@@ -146,8 +143,12 @@
           const p = e.features[0].properties;
           popup.setLngLat(e.lngLat).setHTML(
             `<strong>${USE_LABELS[p.use_type] || p.use_type}</strong><br/>` +
+            (p.address ? `${String(p.address).replace(/\s+/g, ' ').trim()}<br/>` : '') +
             `~${p.net_new_units} homes · ${TYPO_LABELS[p.typology] || p.typology}<br/>` +
-            `${(+p.lot_area_acres).toFixed(2)} acres · ${Math.round(p.transit_min)} min to downtown`
+            `${(+p.lot_area_acres).toFixed(2)} acres · ${Math.round(p.transit_min)} min to downtown<br/>` +
+            `<span style="color:#666">class ${p.asr_class || 'n/a'} · ` +
+            `${p.asr_stories != null ? Math.round(p.asr_stories) : 0} stories` +
+            `${p.asr_year ? ' · built ' + Math.round(p.asr_year) : ''}</span>`
           ).addTo(map);
         });
         map.on('mouseleave', 'candidates-fill', () => {
@@ -172,7 +173,7 @@
     <div class="knob">
       <label for="cut">Max transit time to downtown:
         <strong>{cutoff} min</strong></label>
-      <input id="cut" type="range" min="15" max="75" step="5" bind:value={cutoff} />
+      <input id="cut" type="range" min="15" max="75" step="1" bind:value={cutoff} />
       <div class="ticks"><span>15</span><span>45</span><span>75</span></div>
     </div>
     <div class="toggles">

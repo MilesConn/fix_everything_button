@@ -82,6 +82,40 @@ def download_socrata(filename: str, resource_id: str, desc: str, force: bool) ->
     print(f"    -> {out} ({out.stat().st_size/1e6:.1f} MB)")
 
 
+def download_socrata_query(filename: str, resource_id: str, params: dict, desc: str, force: bool) -> None:
+    """Pull a Socrata dataset with a custom $select / $where, paginated."""
+    import urllib.parse
+
+    out = C.RAW / filename
+    if out.exists() and not force:
+        print(f"[skip] {filename} exists ({out.stat().st_size/1e6:.1f} MB) — {desc}")
+        return
+    print(f"[pull] {filename}  ({resource_id}) — {desc}")
+    offset, first = 0, True
+    base_params = {k: v for k, v in params.items() if k != "$limit"}
+    with open(out, "wb") as f:
+        while True:
+            q = dict(base_params)
+            q["$limit"] = PAGE
+            q["$offset"] = offset
+            q["$order"] = ":id"
+            url = (
+                f"https://{C.SF_DOMAIN}/resource/{resource_id}.csv?"
+                + urllib.parse.urlencode(q, safe="(),=:$")
+            )
+            print(f"    offset {offset:,} …")
+            lines = _get(url).content.splitlines(keepends=True)
+            if not lines or (len(lines) <= 1 and not first):
+                break
+            f.writelines(lines if first else lines[1:])
+            first = False
+            if len(lines) - 1 < PAGE:
+                break
+            offset += PAGE
+            time.sleep(0.5)
+    print(f"    -> {out} ({out.stat().st_size/1e6:.1f} MB)")
+
+
 def download_file(url: str, out, force: bool, label: str) -> None:
     if out.exists() and not force:
         print(f"[skip] {out.name} exists ({out.stat().st_size/1e6:.1f} MB) — {label}")
@@ -105,6 +139,10 @@ def main() -> None:
     print("== DataSF tabular datasets ==")
     for fname, (rid, desc) in C.SOCRATA_DATASETS.items():
         download_socrata(fname, rid, desc, args.force)
+
+    print("\n== DataSF custom queries (assessor roll, boundary) ==")
+    for fname, (rid, params, desc) in C.SOCRATA_QUERIES.items():
+        download_socrata_query(fname, rid, params, desc, args.force)
 
     print("\n== GTFS transit feeds ==")
     for fname, url in C.GTFS_FEEDS.items():

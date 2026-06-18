@@ -108,6 +108,10 @@ def build_grid() -> gpd.GeoDataFrame:
     ys = np.arange(miny, maxy, C.GRID_SPACING_M)
     pts = [Point(x, y) for y in ys for x in xs]
     grid = gpd.GeoDataFrame(geometry=pts, crs=C.SF_CRS_M).to_crs(C.WGS84)
+    # Clip to the SF land boundary so the heatmap never spills into Daly City,
+    # Oakland, or the open bay.
+    boundary = C.sf_boundary_union()
+    grid = grid[grid.geometry.within(boundary)].reset_index(drop=True)
     grid["id"] = [f"g{i}" for i in range(len(grid))]
     return grid[["id", "geometry"]]
 

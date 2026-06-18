@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { base } from '$app/paths';
   import MapExplorer from '$lib/MapExplorer.svelte';
   import { loadModel } from '$lib/data.js';
   import { computeImpact, fmtInt, fmtMoney, fmtPct } from '$lib/economics.js';
@@ -33,7 +34,7 @@
       San Francisco keeps saying it has no room left to grow. It does. By counting only
       parking lots, vacant land and single-story buildings near transit — and demolishing
       nothing — the city can make space for roughly
-      <strong>{model ? fmtInt(model.summary.total_net_new_units) : '100,000'} new homes.</strong>
+      <strong>{model ? fmtInt(model.summary.total_net_new_units) : '16,000'} new homes.</strong>
       Here is where they go, and what they would do to the rent.
     </p>
     <p class="byline sans">
@@ -163,26 +164,39 @@
       candidate only if it clears every one of these tests:
     </p>
     <ol class="crit">
-      <li><strong>No home is demolished</strong> — the parcel has zero existing residential units.</li>
-      <li><strong>It's underused</strong> — a surface parking lot (not a garage), a vacant lot,
-        or a building whose roof sits at or below ~9 m (single-/low-story), from LiDAR heights.</li>
-      <li><strong>It isn't a park</strong> — protected open space is excluded.</li>
-      <li><strong>It survives the sea</strong> — it lies outside the 2100 sea-level-rise +
-        100-year-storm inundation zone.</li>
+      <li><strong>No home is demolished</strong> — zero existing residential units in both the
+        land-use file <em>and</em> the current Assessor roll, and not a residential property class.</li>
+      <li><strong>It isn't civic or institutional</strong> — libraries, schools, churches,
+        hospitals, fire/police, and all government or public land are excluded by property class
+        (this is what kept a branch library out of an earlier draft).</li>
+      <li><strong>It isn't an office or industrial building</strong>, a hotel, or a parking garage.</li>
+      <li><strong>It's genuinely low and underbuilt</strong> — at most one story in the Assessor
+        roll <em>and</em> a roof at/below ~9 m in LiDAR <em>and</em> a floor-area ratio under 1.2.
+        The ratio test rejects any dense or mis-mapped tower (this is what kept Salesforce Tower out).</li>
+      <li><strong>It's not brand-new</strong> — anything the Assessor records as built since 2015
+        is excluded, so recent buildings the older layers miss (e.g. a 2020 apartment block) don't
+        slip through as “vacant.”</li>
+      <li><strong>It carries a real soft-site signal</strong> — a surface parking lot, a vacant
+        developable lot, or single-story retail/commercial.</li>
+      <li><strong>It survives the sea</strong> — outside the 2100 sea-level-rise + 100-year-storm
+        inundation zone.</li>
       <li><strong>It's transit-served</strong> — public-transit travel time to downtown is at or
         below your chosen cutoff.</li>
     </ol>
     <p>
       Each surviving site is then matched to its neighborhood's building heights and given a
-      conservative low-, mid- or high-rise unit count, so nothing towers over its block.
+      conservative low-, mid- or high-rise unit count, so nothing towers over its block. We hand-review
+      sites for feasibility in a companion <a href="{base}/review">annotation tool</a>, and feed what
+      we learn back into these rules.
     </p>
 
     {#if model}
       <div class="sources sans">
         <h3>Data</h3>
         <ul>
-          <li>Parcels, land use, zoning, building footprints (LiDAR heights), and the 2100
-            sea-level-rise zone — <a href="https://data.sfgov.org" target="_blank" rel="noreferrer">DataSF</a> open data.</li>
+          <li>Parcels, land use, zoning, building footprints (LiDAR heights), the 2100
+            sea-level-rise zone, and the current <strong>Assessor secured roll</strong>
+            (stories, units, year built, property class) — <a href="https://data.sfgov.org" target="_blank" rel="noreferrer">DataSF</a> open data.</li>
           <li>Transit schedules — SFMTA (Muni) and BART GTFS feeds; routing on the OpenStreetMap
             street network via R5/r5py.</li>
         </ul>

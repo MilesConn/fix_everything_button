@@ -41,37 +41,36 @@
   "summary": {
     "cutoff_min": 45,
     "downtown_anchor": "Salesforce Transit Center (downtown core)",
-    "num_candidates": 7548,
-    "total_net_new_units": 99579,
-    "total_acres": 1809.1,
+    "assessor_roll_year": 2024,
+    "num_candidates": 2193,
+    "total_net_new_units": 16584,
+    "total_acres": 298.8,
     "by_use_type": {
-      "single_story_commercial": 3611,
-      "vacant": 2510,
-      "low_intensity": 1118,
-      "surface_parking": 309
+      "vacant": 1541,
+      "single_story_commercial": 390,
+      "surface_parking": 262
     },
     "by_typology": {
-      "high": 292,
-      "low": 90935,
-      "mid": 8352
+      "high": 57,
+      "low": 15586,
+      "mid": 941
     },
     "units_by_use_type": {
-      "low_intensity": 13181,
-      "single_story_commercial": 51090,
-      "surface_parking": 2930,
-      "vacant": 32378
+      "single_story_commercial": 4240,
+      "surface_parking": 2175,
+      "vacant": 10169
     }
   },
   "impact_default": {
-    "headline": "Building ~99,579 net-new homes (a 24.5% increase in SF's housing stock) is projected to lower average market rents by 6\u201324% (central estimate 12%), \u2248 $391/month off the typical rent.",
+    "headline": "Building ~16,584 net-new homes (a 4.1% increase in SF's housing stock) is projected to lower average market rents by 1\u20134% (central estimate 2%), \u2248 $65/month off the typical rent.",
     "inputs": {
-      "net_new_units": 99579,
+      "net_new_units": 16584,
       "transit_cutoff_min": 45,
       "sf_housing_units": 407000,
       "sf_average_rent": 3200,
       "sf_renter_households": 230000
     },
-    "stock_increase_pct": 24.47,
+    "stock_increase_pct": 4.07,
     "marginal_rent_pct_per_10k_units": {
       "conservative": -0.614,
       "central": -1.229,
@@ -80,34 +79,34 @@
     "scenarios_full_buildout": {
       "conservative": {
         "elasticity": -0.25,
-        "rent_change_pct": -6.12,
-        "new_average_rent": 3004.27,
-        "monthly_savings_per_renter": 195.73,
-        "annual_savings_per_renter": 2348.79,
-        "citywide_annual_savings": 540222192.0
+        "rent_change_pct": -1.02,
+        "new_average_rent": 3167.4,
+        "monthly_savings_per_renter": 32.6,
+        "annual_savings_per_renter": 391.17,
+        "citywide_annual_savings": 89969219.0
       },
       "central": {
         "elasticity": -0.5,
-        "rent_change_pct": -12.23,
-        "new_average_rent": 2808.53,
-        "monthly_savings_per_renter": 391.47,
-        "annual_savings_per_renter": 4697.58,
-        "citywide_annual_savings": 1080444383.0
+        "rent_change_pct": -2.04,
+        "new_average_rent": 3134.8,
+        "monthly_savings_per_renter": 65.2,
+        "annual_savings_per_renter": 782.34,
+        "citywide_annual_savings": 179938437.0
       },
       "optimistic": {
         "elasticity": -1.0,
-        "rent_change_pct": -24.47,
-        "new_average_rent": 2417.07,
-        "monthly_savings_per_renter": 782.93,
-        "annual_savings_per_renter": 9395.17,
-        "citywide_annual_savings": 2160888767.0
+        "rent_change_pct": -4.07,
+        "new_average_rent": 3069.61,
+        "monthly_savings_per_renter": 130.39,
+        "annual_savings_per_renter": 1564.68,
+        "citywide_annual_savings": 359876875.0
       }
     },
     "phased_buildout": {
       "years": 15,
-      "units_per_year": 6639,
-      "annual_stock_pct": 1.631,
-      "annual_rent_change_pct_central": -0.816
+      "units_per_year": 1106,
+      "annual_stock_pct": 0.272,
+      "annual_rent_change_pct_central": -0.136
     },
     "cross_checks": [
       "Pew Charitable Trusts (2025): +10% metro housing stock \u21d2 rents grew ~5% less over 2017\u20132024 across 1,654 Zillow ZIPs \u21d2 stock elasticity \u2248 -0.5; regional supply ~4x more effective than purely local supply.",

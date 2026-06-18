@@ -15,5 +15,8 @@ site/build/
 site/.svelte-kit/
 site/.vite/
 
+# Secrets
+.env.secrets
+
 # OS
 .DS_Store

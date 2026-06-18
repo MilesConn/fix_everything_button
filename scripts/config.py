@@ -33,8 +33,38 @@ SOCRATA_DATASETS = {
     "parcels.csv": ("acdm-wktn", "Parcels – Active and Retired (geometry, zoning code)"),
     "land_use_current.csv": ("c5ge-t6pj", "Land Use (use flags: parking, commercial sqft, residential units)"),
     "zoning_districts.csv": ("xzez-p3nc", "Zoning Districts (base zoning + height/bulk)"),
-    "building_footprints.csv": ("ynuv-fyni", "Building Footprints w/ LiDAR heights"),
+    "building_footprints.csv": ("ynuv-fyni", "Building Footprints w/ LiDAR heights (2017 survey)"),
     "slr_66in.csv": ("6ann-usi8", "100-yr storm + 66in Sea Level Rise (2100 inundation zone)"),
+}
+
+# Datasets that need a custom Socrata query ($select / $where) rather than a full
+# table dump. Pulled by pull_data.download_socrata_query().
+#   filename: (resource_id, params, description)
+ASSESSOR_ROLL_YEAR = 2024  # latest closed secured-roll year (authoritative, current)
+SOCRATA_QUERIES = {
+    # The Assessor secured roll is the authoritative, *current* source of what is
+    # actually built on each parcel: stories, units, year built, building area,
+    # and a clean property-class code. It corrects the stale land-use unit counts
+    # and the 2017-vintage LiDAR (which misses every post-2017 building).
+    "assessor_roll.csv": (
+        "wv5m-vpq2",
+        {
+            "$select": (
+                "block,lot,property_location,property_class_code,"
+                "property_class_code_definition,use_definition,year_property_built,"
+                "number_of_stories,number_of_units,property_area,lot_area,the_geom"
+            ),
+            "$where": f"closed_roll_year={ASSESSOR_ROLL_YEAR}",
+        },
+        f"Assessor secured property roll {ASSESSOR_ROLL_YEAR} (stories/units/year/class)",
+    ),
+    # SF land boundary (SF Find Neighborhoods) — used to clip the travel-time
+    # heatmap and candidates to the city, dropping Daly City / Oakland / open bay.
+    "sf_neighborhoods.csv": (
+        "gfpk-269f",
+        {"$select": "name,the_geom", "$limit": "5000"},
+        "SF Find Neighborhoods (city land boundary for clipping)",
+    ),
 }
 
 # --------------------------------------------------------------------------- #
@@ -93,17 +123,66 @@ DEFAULT_CUTOFF_MIN = 45
 # "Underutilized" building height: a parcel whose tallest building is at or
 # below this height (meters) is treated as effectively single-/low-story and a
 # candidate for additional stories. ~1 story ≈ 3.5–4.5 m; we use 9 m (≈ up to 2
-# low stories) to capture single-story commercial "taxpayer" buildings.
+# low stories) to capture single-story commercial "taxpayer" buildings. This is
+# a *secondary* guard now — a parcel with a LiDAR building taller than this is
+# rejected even if the (current) assessor roll calls it low-rise.
 SINGLE_STORY_MAX_HEIGHT_M = 9.0
 
+# Authoritative story cap from the assessor roll. PAU targets single-story
+# "taxpayer" commercial; we require at most this many stories on any existing
+# building (vacant / parking lots have 0). Set to 1 to be deliberately strict.
+MAX_SOFT_SITE_STORIES = 1
+
+# Floor-area-ratio (built sqft / lot sqft) ceiling. A genuinely underutilized
+# soft site has lots of unused development rights, i.e. a low FAR. This is the
+# backstop that rejects any dense or mis-joined parcel (e.g. a tower whose roll
+# record lost its story count) regardless of the height/story signals.
+MAX_SOFT_SITE_FAR = 1.2
+
 # A parcel counts as having no existing housing to demolish if it has at most
-# this many residential units. PAU's rule is "no demolition of any home", so we
-# require zero existing units (single-family lots are NOT candidates).
+# this many residential units (per BOTH the land-use file and the current
+# assessor roll). PAU's rule is "no demolition of any home", so we require zero.
 MAX_EXISTING_RES_UNITS = 0
 
-# Commercial sqft ceiling for a "low-intensity commercial" candidate (proxy for
-# unused development rights when paired with a low building height).
-LOW_COMMERCIAL_SQFT = 15000
+# Don't treat a recently-completed building as a soft site even if other signals
+# lag: any parcel whose assessor year-built is at or after this is excluded.
+RECENT_BUILD_YEAR = 2015
+
+# --------------------------------------------------------------------------- #
+# Assessor property-class-code taxonomy (drives use-based eligibility)
+# --------------------------------------------------------------------------- #
+# Civic / institutional / medical / government / public land — NEVER upzoned
+# (libraries, schools, churches, hospitals, fire/police, consulates, clubs,
+# golf courses, theatres, and all government / public-owned + public-vacant).
+ASSESSOR_INSTITUTIONAL_CLASSES = {
+    "E", "EG", "LIBG", "W", "N1", "N1G", "N2", "N2G", "FIRG", "POLG", "CONG",
+    "SP", "U", "UG", "GC", "T", "PI", "VG", "VPUB", "VSP",
+}
+# Existing housing (any of these means the parcel already holds homes).
+ASSESSOR_RESIDENTIAL_CLASSES = {
+    "D", "DA", "DA5", "DA15", "DBM", "DCON", "DD", "DD5", "DD15", "DF", "F",
+    "F2", "F5", "F15", "FA", "FA5", "FS", "FS5", "FS15", "A", "A5", "A5G",
+    "A15", "AC", "ACG", "AG", "Z", "ZBM", "ZEU", "LZ", "LZBM", "CO", "COS",
+    "TH", "THBM", "TIC", "TIA", "TI15", "PD", "RH", "RH1", "RHG", "XV",
+    "OA", "OA5", "OA15",
+}
+# Office / industrial buildings (PAU does not target these for conversion).
+ASSESSOR_OFFICE_INDUSTRIAL_CLASSES = {
+    "O", "O35", "OAH", "OAL", "OBH", "OBM", "OC", "OCH", "OCL", "OCM", "OG",
+    "OMD", "OZ", "OZEU", "B", "BZ", "I", "IDC", "IG", "IW", "IX", "IXG", "IZ",
+}
+# Other structures that are NOT soft sites: parking *garages* (vs. surface
+# lots), hotels/motels (occupied buildings), under-water lots, and misc.
+ASSESSOR_EXCLUDE_CLASSES = {
+    "G", "GG", "GZ", "PLG", "PZ",              # parking garages / stall condos
+    "H", "H1", "H2", "HC", "HG", "M", "MG",    # hotels / motels
+    "UWL",                                     # under-water lots
+    "X",                                       # misc / unclassified
+}
+# Positive soft-site signals -------------------------------------------------
+ASSESSOR_PARKING_CLASSES = {"PL"}                       # surface parking lot only
+ASSESSOR_VACANT_CLASSES = {"V", "VR", "VRX", "VCI", "VA15", "TDR"}
+ASSESSOR_COMMERCIAL_CLASSES = {"C", "CZ", "CM", "C1", "CD", "CG", "C1G", "S"}
 
 # --------------------------------------------------------------------------- #
 # Housing-typology yields (units the upzoned parcel could hold)
@@ -152,3 +231,22 @@ ELASTICITY_SOURCES = [
 # Buildout phasing (years) for translating a large stock shock into annual,
 # defensible marginal steps rather than one implausible linear jump.
 BUILDOUT_PHASE_YEARS = 15
+
+
+# --------------------------------------------------------------------------- #
+# San Francisco land boundary (for clipping the heatmap / candidates to the city)
+# --------------------------------------------------------------------------- #
+def sf_boundary_union(buffer_m: float = 150.0):
+    """Return the SF land boundary as one (slightly buffered) WGS84 polygon.
+
+    Built by unioning the SF Find Neighborhoods polygons. The small buffer keeps
+    grid points that fall in streets / on the shoreline edge. Cached on disk-read.
+    """
+    import geopandas as gpd
+    import pandas as pd
+
+    df = pd.read_csv(RAW / "sf_neighborhoods.csv")
+    df = df[df["the_geom"].notna()]
+    g = gpd.GeoSeries.from_wkt(df["the_geom"], crs=WGS84).make_valid()
+    union_m = g.to_crs(SF_CRS_M).union_all().buffer(buffer_m)
+    return gpd.GeoSeries([union_m], crs=SF_CRS_M).to_crs(WGS84).iloc[0]
